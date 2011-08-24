@@ -39,7 +39,7 @@ package org.osflash.async
 		const closure : Function = function(event : Event) : void {
 			listener(event);
 			if (oneShot) {
-				dispatcher.removeEventListener(type, closure);
+				dispatcher.removeEventListener(type, closure, useCapture);
 			}
 		};
 		
