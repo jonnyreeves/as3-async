@@ -1,66 +1,128 @@
-package org.osflash.async {
+package org.osflash.async 
+{
 	import org.flexunit.asserts.assertEquals;
-	import org.flexunit.asserts.assertFalse;
 	import org.flexunit.asserts.assertTrue;
+	import org.flexunit.async.Async;
+	import org.osflash.async.mocks.PromiseEvent;
+	import org.osflash.async.mocks.SimpleDeferred;
 
-	import flash.events.Event;
 	import flash.events.EventDispatcher;
+	
 	/**
-	 * @author jonny
+	 * @author Jonny Reeves
 	 */
 	public class TestWhen 
 	{
-		private var _dispatcher : EventDispatcher;
+		private var _eventDispatcher : EventDispatcher;
 		
 		[Before]
 		public function setup() : void
 		{
-			_dispatcher = new EventDispatcher();
+			_eventDispatcher = new EventDispatcher();
 		}
 		
-		[Test]
-		public function eventRoutedToListenerFunction() : void
+		[Test (async)]
+		public function twoPromisesSupplied_onCompleteCalledOnSuccess() : void
 		{
-			var listenerInvoked : Boolean = false;
+			const promiseA : Promise = new SimpleDeferred(true, 10);
+			const promiseB : Promise = new SimpleDeferred(true, 15);
 			
-			when(_dispatcher, Event.COMPLETE, function() : void {
-				listenerInvoked = true; 
+			assertPromiseResolves();
+			
+			when(promiseA, promiseB)
+				.completes(notifyResolved)
+				.fails(notifyRejected);
+		}
+		
+		[Test (async)]
+		public function failedPromise_whenPromiseRejected() : void
+		{
+			const promiseA : Promise = new SimpleDeferred(true, 10);
+			const promiseB : Promise = new SimpleDeferred(false, 15);
+			
+			assertPromiseRejects();
+			
+			when(promiseA, promiseB)
+				.completes(notifyResolved)
+				.fails(notifyRejected);
+		}
+		
+		[Test (async)]
+		public function promiseOutcomesReturnedInSuppliedOrder() : void
+		{
+			const promiseA : Promise = new SimpleDeferred(true, 80);
+			const promiseB : Promise = new SimpleDeferred(true, 10);
+			
+			assertPromiseResolves(function(outcome : Array) : void {
+				assertTrue(outcome[0] === promiseA);
+				assertTrue(outcome[1] === promiseB);
 			});
 			
-			_dispatcher.dispatchEvent(new Event(Event.COMPLETE));
-			
-			assertTrue(listenerInvoked);
+			when(promiseA, promiseB)
+				.completes(notifyResolved)
+				.fails(notifyRejected);
 		}
 		
-		[Test]
-		public function oneShotUnmappedAfterInitialDispatch() : void
+		[Test (async)]
+		public function nonPromiseObjectsPassthru() : void
 		{
-			var timesInvoked : uint = 0;
+			const promiseA : Promise = new SimpleDeferred(true);
+			const promiseB : Promise = new SimpleDeferred(true);
+			const mrCat : Object = { fuzzy: true, cutie: true, woofy: false };
 			
-			when(_dispatcher, Event.COMPLETE, function() : void {
-				timesInvoked += 1;
+			assertPromiseResolves(function(outcome : Array) : void {
+				assertEquals(4, outcome.length);
+				assertEquals(mrCat, outcome[1]);
 			});
 			
-			_dispatcher.dispatchEvent(new Event(Event.COMPLETE));
-			_dispatcher.dispatchEvent(new Event(Event.COMPLETE));
-			
-			assertEquals(1, timesInvoked);
-			assertFalse(_dispatcher.hasEventListener(Event.COMPLETE));
+			when(promiseA, mrCat, "some string", promiseB)
+				.completes(notifyResolved)
+				.fails(notifyRejected);
 		}
 		
-		[Test]
-		public function notOneShotIsNotUnmapped() : void {
-			var timesInvoked : uint = 0;
+		[Test (async)]
+		public function singleNonPromisePassesThru() : void
+		{
+			const mrDog : Object = { fuzzy: true, cutie: true, woofy: true };
 			
-			when(_dispatcher, Event.COMPLETE, function() : void {
-				timesInvoked += 1;
-			}, false);
+			assertPromiseResolves();
 			
-			_dispatcher.dispatchEvent(new Event(Event.COMPLETE));
-			_dispatcher.dispatchEvent(new Event(Event.COMPLETE));
-			
-			assertEquals(2, timesInvoked);
-			assertTrue(_dispatcher.hasEventListener(Event.COMPLETE));
+			when(mrDog)
+				.completes(notifyResolved)
+				.fails(notifyRejected);
+		}
+		
+
+		private function assertPromiseResolves(callback : Function = null) : void {
+			if (callback == null) {
+				Async.proceedOnEvent(this, _eventDispatcher, PromiseEvent.RESOLVED);
+			}
+			else {
+				Async.handleEvent(this, _eventDispatcher, PromiseEvent.RESOLVED, function(event : PromiseEvent, passThru : Object) : void {
+					callback(event.outcome);
+				});
+			}
+			Async.failOnEvent(this, _eventDispatcher, PromiseEvent.REJECTED);
+		}
+		
+		private function assertPromiseRejects(callback : Function = null) : void {
+			if (callback == null) {
+				Async.proceedOnEvent(this, _eventDispatcher, PromiseEvent.REJECTED);
+			}
+			else {
+				Async.handleEvent(this, _eventDispatcher, PromiseEvent.REJECTED, function(event : PromiseEvent, passThru : Object) : void {
+					callback(event.error);
+				});
+			}
+			Async.failOnEvent(this, _eventDispatcher, PromiseEvent.RESOLVED);			
+		}
+		
+		private function notifyResolved(outcome : *) : void {
+			_eventDispatcher.dispatchEvent(new PromiseEvent(PromiseEvent.RESOLVED, outcome));			
+		}
+		
+		private function notifyRejected(error : Error) : void {
+			_eventDispatcher.dispatchEvent(new PromiseEvent(PromiseEvent.REJECTED, error));
 		}
 	}
 }

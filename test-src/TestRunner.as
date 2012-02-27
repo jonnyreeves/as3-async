@@ -1,4 +1,5 @@
 package {
+	import org.osflash.async.TestDeferred;
 	import org.osflash.async.TestWhen;
 	import org.flexunit.internals.TraceListener;
 	import org.flexunit.listeners.CIListener;
@@ -28,7 +29,8 @@ package {
 			core.addListener(new CIListener());
 			
 			core.run([
-				TestWhen
+				TestWhen,
+				TestDeferred
 			]);			
 		}
 	}

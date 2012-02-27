@@ -1,41 +1,4 @@
 AS3 Async
 =========
 
-Utilities for working with asynchronous code in ActionScript 3.  This library is open source and participation from
-others is encouraged! :)
-
-when
-----
-Provides a convenient way of handling Events using closures.  All mappings are automatically cleaned up by default,
-but they can be made to persist by setting the `oneShot` argument to `false`.
-
-```actionscript
-package app.service {
-	public class DataLoader extends EventDispatcher {
-		private var _url : String;
-		private var _parser : IDataParser;
-	
-		public function DataLoader(url : String, parser : IDataParser) {
-			_url = url;
-			_parser = parser;
-		}
-	
-		public function load() : void {
-			const urlLoader : URLLoader = new URLLoader();
-			
-			// Create a mapping that will listen for Event.COMPLETE being dispatched by urlLoader.
-			when(urlLoader, Event.COMPLETE, function () : void {
-				// This code is invoked when the event is fired, because we are inside a closure
-				// it can access properties from the parent function and parent Class.
-				const data : MyData = _parser.parse(urlLoader.data);
-				
-				// In this example we dispatch a custom Event to let the rest of the system know 
-				// something has happened.
-				dispatchEvent(new DataLoadedEvent(DataLoadedEvent.DATA_LOADED, data)); 
-			});
-			
-			urlLoader.load(new URLRequest(_url));
-		}
-	}
-}
-```
+A clean and compact implementation of the [Promise pattern](http://en.wikipedia.org/wiki/Futures_and_promises).
