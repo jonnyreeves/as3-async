@@ -1,4 +1,76 @@
 AS3 Async
 =========
+The goal of this library is to make writing asynchronous code simple, error free and compact as possible.  One of the ways we are setting out to achieve this is to provide a clean and compact implementation of the [Promise pattern](http://en.wikipedia.org/wiki/Futures_and_promises) tailored to take advantage of ActionScript 3.
 
-A clean and compact implementation of the [Promise pattern](http://en.wikipedia.org/wiki/Futures_and_promises).
+Deferreds and Promises
+----------------------
+The most common way to tackle asynchronous execution in Flash is to use Events; however this results in a lot of boiler plate code (which in turn can make things hard to read) and it's easy to make mistakes (ie: forget to remove Event Listeners).
+
+    function execute() : void {
+        var service : TwitterService = new TwitterService();
+        service.addEventListener(TwitterServiceEvent.COMPLETE, onTimelineFetched);
+        service.addEventListener(ErrorEvent.ERROR, onServiceFailed);
+        service.fetchTimelineFor("jonnyreeves");
+    }
+
+    private function onTimelineFetched(event : TwitterServiceEvent) : void {
+        var service : TwitterService = event.target as TwitterService;
+        service.removeEventListener(TwitterServiceEvent.COMPLETE, onTimelineFetched);
+        service.removeEventListener(ErrorEvent.ERROR, onServiceFailed);    
+
+        // Notify the rest of the app. that we have some tweets!
+        dispatchEvent(new TweetsFetchedEvent(event.userTimeline));
+    }
+
+    private function onServiceFailed(event : ErrorEvent) : void {
+        var service : TwitterService = event.target as TwitterService;
+        service.removeEventListener(TwitterServiceEvent.COMPLETE, onTimelineFetched);
+        service.removeEventListener(ErrorEvent.ERROR, onServiceFailed);    
+        trace("Error fetching tweets: " + event.text);
+    }
+
+Now imagine what the code would look like if we wanted to fetch Tweets for 3 different Twitter Users before we dispatched the `TweetsFetchedEvent` - things would get pretty messy.  This is where Deferreds and Promises come into their element
+
+Here's the same TwitterService, but instead of dispatching Events, it returns a `Promise` when the user invokes `fetchTimelineFor`.
+
+    function execute() : void {
+        var service : DeferredTwitterService = new DeferredTwitterService();
+        var promise : Promise = service.fetchTimelineFor("jonnyreeves");
+
+        // Wire the complete and error handlers to the Promise.
+        promise
+            .completes(onTimelineFetched);
+            .fails(onServiceFailed);
+    }
+
+    function onTimelineFetched(userTimeline : TwitterUserTimeline) : void {
+        dispatchEvent(new TweetsFetchedEvent(userTimeline));
+    }
+
+    function onServiceFailed(error : ErrorEvent) : void {
+        trace("Error fetching tweets: " + error.message);
+    }
+
+Deferred Services (which return Promises when invoked) have a clean and consistent API; handlers added via `completes` can accept zero or one argument (the outcome of the Service) and handlers added via `fails` should expect an Error object.  You can chain as many handler functions to completes, or fails as you like - they will be called in the order they are added.
+
+Chaining Deferred Promises with `when`
+--------------------------------------
+`when` is a global helper method which can be used to combine one or more Promises into a single Promise - sounds complicated, it's easy (and epic!)
+
+    function execute() : void {
+        when(fetchTweetsFor("jonnyreeves"), fetchTweetsFor("catburton"), fetchTweetsFor("seanparsons"))
+            .completes(onAllTweetsFetched);
+    }
+
+    function fetchTweetsFor(username : String) : Promise {
+        return new TwitterService().fetchTimelineFor(username);
+    }
+
+    function onAllTweetsFetched(outcomes : Array) : void {
+        trace("Got tweets for " + outcomes.length + " users.");
+        for each (var userTimeline : TwitterUserTimeline in outcomes) {
+            trace(userTimeline.username + ", tweets: " + userTimeline.tweets[0].message);
+        }
+    }
+
+The Promise returned by `when` will provide handlers added via `complete` with an Array of outcomes provided by the supplied Deferreds in the order they were added.  Should any of the Promises supplied to `when` fail, then the Promise returned by `when` will also fail.
