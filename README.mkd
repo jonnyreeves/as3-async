@@ -53,6 +53,8 @@ Here's the same TwitterService, but instead of dispatching Events, it returns a 
 
 Deferred Services (which return Promises when invoked) have a clean and consistent API; handlers added via `completes` can accept zero or one argument (the outcome of the Service) and handlers added via `fails` should expect an Error object.  You can chain as many handler functions to completes, or fails as you like - they will be called in the order they are added.
 
+Promises let you forget about race conditions when you code.  It doesn't matter if you add your completes and fails handlers after the service has resolved  - your handler will still get supplied with the correct outcome.
+
 Chaining Deferred Promises with `when`
 --------------------------------------
 `when` is a global helper method which can be used to combine one or more Promises into a single Promise - sounds complicated, it's easy (and epic!)
