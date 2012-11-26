@@ -80,7 +80,7 @@ package org.osflash.async
 		private function onRejectEvent(event : Event) : void
 		{
 			if (_rejectHandlerMap[event.type] is Function) {
-				_outcome.reject(_rejectHandlerMap[event.type]);
+				_outcome.reject(_rejectHandlerMap[event.type](event));
 			}
 			else if ("text" in event) {
 				_outcome.reject(new Error(event["text"]));
