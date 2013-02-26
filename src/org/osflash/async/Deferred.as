@@ -138,7 +138,12 @@ package org.osflash.async
 		
 		public function thenFinally(callback : Function) : void
 		{
-			_finalCallback = callback;
+            if (_state == PENDING) {
+			    _finalCallback = callback;
+            }
+            else {
+                callback();
+            }
 		}
 
 		private function clearListeners() : void
