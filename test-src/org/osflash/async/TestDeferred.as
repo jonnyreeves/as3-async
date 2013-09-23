@@ -234,6 +234,30 @@ package org.osflash.async
 			assertStrictlyEquals(finalCallback, callbacksByOrderInvoked[1]);
 		}
 		
+        [Test]
+        public function finalHandlerInvokedWhenAddedAfterResolve () : void
+        {
+            var finalHandlerInvoked:Boolean = false;
+            const finalCallback : Function = function() : void {
+                finalHandlerInvoked = true;
+            };
+            _deferred.resolve();
+            _deferred.thenFinally(finalCallback);
+            assertTrue(finalHandlerInvoked);
+        }
+        
+        [Test]
+        public function finalHandlerInvokedWhenAddedAfterReject () : void
+        {
+            var finalHandlerInvoked:Boolean = false;
+            const finalCallback : Function = function() : void {
+                finalHandlerInvoked = true;
+            };
+            _deferred.reject(new Error());
+            _deferred.thenFinally(finalCallback);
+            assertTrue(finalHandlerInvoked);
+        }
+        
 		[Test]
 		public function deferredDoesNotTransitionToRejectedOnceResolved() : void
 		{
